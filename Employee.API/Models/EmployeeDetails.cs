@@ -11,6 +11,7 @@ namespace Employee.API.Models
         public int Department { get; set; }
         public string Location { get; set; }
         public bool IsAvailable { get; set; }
+        public int DesignationId { get; set; }
 
     }
 }

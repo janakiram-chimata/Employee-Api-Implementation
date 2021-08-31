@@ -1,6 +1,8 @@
 ﻿using Employee.API.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace Employee.API.Controllers
@@ -20,19 +22,47 @@ namespace Employee.API.Controllers
         [HttpGet]
         public async Task<IActionResult> GetAllEmployees()
         {
-            return Ok(await _context.Details.ToArrayAsync());
+            var designation = _context.Designation;
+            var department = _context.Departments;
+            var details = await _context.Details.Select(x => new {
+                Name = x.Name,
+                Email = x.Email,
+                Location = x.Location,
+                Department = x.Department,
+                IsAvailable = x.IsAvailable,
+                Id = x.Id,
+                DesignationId = x.DesignationId
+            }).ToArrayAsync();
+
+            var employeeQuery =
+                from e in details 
+                join d in designation on e.DesignationId equals d.Id
+                join de in department on e.Department equals de.Id
+                select new { Id = e.Id, Name = e.Name, Email = e.Email , Role = d.DesignationName , Department = de.DepartmentName };
+
+            return Ok(employeeQuery);
         }
 
         [HttpGet("{id}")]
         public async Task<IActionResult> GetEmployee(int id)
         {
-            var detail = await _context.Details.FindAsync(id);
+            var designation = _context.Designation;
+            var department = _context.Departments;
+            var details = _context.Details;
 
-            if(detail == null)
+            var detail = await _context.Details.FindAsync(id);
+            if (detail == null)
             {
                 return NotFound();
             }
-            return Ok(detail);
+                var employeeQuery =
+                from e in details where e.Id == detail.Id
+                join d in designation on e.DesignationId equals d.Id 
+                join de in department on e.Department equals de.Id 
+                select new { Id = e.Id, Name = e.Name, Email = e.Email, Role = d.DesignationName, Department = de.DepartmentName }
+                ;
+
+                return Ok(employeeQuery);
         }
 
         [HttpPost]
@@ -40,7 +70,7 @@ namespace Employee.API.Controllers
         {
             _context.Details.Add(details);
             await _context.SaveChangesAsync();
-            return CreatedAtAction("GetEmployee", new { id = details.Id }, details);
+            return CreatedAtAction("GetEmployee", new { id = details.Id }, new { Id = details.Id , Name = details.Name});
         }
 
         [HttpPut("{id}")]
@@ -77,7 +107,6 @@ namespace Employee.API.Controllers
             }
             _context.Details.Remove(details);
             await _context.SaveChangesAsync();
-
             return details;
         }
 
